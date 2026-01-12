@@ -10,48 +10,53 @@ const db = createClient({
 async function initDatabase() {
     console.log('🔌 Conectando ao Turso...');
 
-    // Cria tabela de usuários
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL COLLATE NOCASE,
-            password TEXT NOT NULL,
-            name TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
+    try {
+        // Cria tabela de usuários
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+                password TEXT NOT NULL,
+                name TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-    // Cria tabela de registros de peso
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS weight_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            weight REAL NOT NULL,
-            date TEXT NOT NULL,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
+        // Cria tabela de registros de peso
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS weight_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                weight REAL NOT NULL,
+                date TEXT NOT NULL,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
 
-    // Cria tabela de metas
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS weight_goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER UNIQUE NOT NULL,
-            target_weight REAL,
-            target_date TEXT,
-            initial_weight REAL,
-            daily_goal REAL,
-            weekly_goal REAL,
-            monthly_goal REAL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
+        // Cria tabela de metas
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS weight_goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER UNIQUE NOT NULL,
+                target_weight REAL,
+                target_date TEXT,
+                initial_weight REAL,
+                daily_goal REAL,
+                weekly_goal REAL,
+                monthly_goal REAL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
 
-    console.log('✅ Banco de dados Turso inicializado!');
+        console.log('✅ Banco de dados Turso inicializado!');
+    } catch (error) {
+        console.error('❌ Erro ao criar tabelas:', error.message);
+        throw error;
+    }
 }
 
 // Helper: Executa query e retorna todas as linhas

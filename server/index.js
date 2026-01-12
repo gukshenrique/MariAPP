@@ -20,7 +20,7 @@ app.use(express.static(distPath));
 // ============================================
 
 // POST /api/users/register - Cria novo usuário com senha
-app.post('/api/users/register', (req, res) => {
+app.post('/api/users/register', async (req, res) => {
     try {
         const { username, password } = req.body;
 
@@ -35,14 +35,14 @@ app.post('/api/users/register', (req, res) => {
         const name = username.trim();
 
         // Verifica se usuário já existe
-        const existing = queryOne('SELECT id FROM users WHERE username = ? COLLATE NOCASE', [name]);
+        const existing = await queryOne('SELECT id FROM users WHERE username = ? COLLATE NOCASE', [name]);
         if (existing) {
             return res.status(400).json({ error: 'Usuário já existe' });
         }
 
         // Cria novo usuário
-        const result = run('INSERT INTO users (username, password, name) VALUES (?, ?, ?)', [name, password, name]);
-        const user = queryOne('SELECT id, username, name, created_at FROM users WHERE id = ?', [result.lastInsertRowid]);
+        const result = await run('INSERT INTO users (username, password, name) VALUES (?, ?, ?)', [name, password, name]);
+        const user = await queryOne('SELECT id, username, name, created_at FROM users WHERE id = ?', [result.lastInsertRowid]);
 
         res.json({ success: true, user });
     } catch (error) {
@@ -52,7 +52,7 @@ app.post('/api/users/register', (req, res) => {
 });
 
 // POST /api/users/login - Verifica credenciais e retorna usuário
-app.post('/api/users/login', (req, res) => {
+app.post('/api/users/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
@@ -63,7 +63,7 @@ app.post('/api/users/login', (req, res) => {
         const name = username.trim();
 
         // Busca usuário
-        const user = queryOne('SELECT * FROM users WHERE username = ? COLLATE NOCASE', [name]);
+        const user = await queryOne('SELECT * FROM users WHERE username = ? COLLATE NOCASE', [name]);
 
         if (!user) {
             return res.status(401).json({ error: 'Usuário não encontrado' });
@@ -88,10 +88,10 @@ app.post('/api/users/login', (req, res) => {
 // ============================================
 
 // GET /api/entries/:userId - Lista registros do usuário
-app.get('/api/entries/:userId', (req, res) => {
+app.get('/api/entries/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const entries = queryAll(`
+        const entries = await queryAll(`
             SELECT * FROM weight_entries 
             WHERE user_id = ? 
             ORDER BY date DESC
@@ -105,7 +105,7 @@ app.get('/api/entries/:userId', (req, res) => {
 });
 
 // POST /api/entries - Cria novo registro
-app.post('/api/entries', (req, res) => {
+app.post('/api/entries', async (req, res) => {
     try {
         const { user_id, weight, date, notes } = req.body;
 
@@ -113,12 +113,12 @@ app.post('/api/entries', (req, res) => {
             return res.status(400).json({ error: 'user_id, weight e date são obrigatórios' });
         }
 
-        const result = run(`
+        const result = await run(`
             INSERT INTO weight_entries (user_id, weight, date, notes)
             VALUES (?, ?, ?, ?)
         `, [user_id, weight, date, notes || null]);
 
-        const entry = queryOne('SELECT * FROM weight_entries WHERE id = ?', [result.lastInsertRowid]);
+        const entry = await queryOne('SELECT * FROM weight_entries WHERE id = ?', [result.lastInsertRowid]);
         res.json(entry);
     } catch (error) {
         console.error('Erro ao criar entry:', error);
@@ -127,10 +127,10 @@ app.post('/api/entries', (req, res) => {
 });
 
 // DELETE /api/entries/:id - Remove registro
-app.delete('/api/entries/:id', (req, res) => {
+app.delete('/api/entries/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        run('DELETE FROM weight_entries WHERE id = ?', [parseInt(id)]);
+        await run('DELETE FROM weight_entries WHERE id = ?', [parseInt(id)]);
         res.json({ success: true });
     } catch (error) {
         console.error('Erro ao deletar entry:', error);
@@ -143,10 +143,10 @@ app.delete('/api/entries/:id', (req, res) => {
 // ============================================
 
 // GET /api/goals/:userId - Retorna meta do usuário
-app.get('/api/goals/:userId', (req, res) => {
+app.get('/api/goals/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const goal = queryOne('SELECT * FROM weight_goals WHERE user_id = ?', [parseInt(userId)]);
+        const goal = await queryOne('SELECT * FROM weight_goals WHERE user_id = ?', [parseInt(userId)]);
         res.json(goal || null);
     } catch (error) {
         console.error('Erro ao buscar goal:', error);
@@ -155,7 +155,7 @@ app.get('/api/goals/:userId', (req, res) => {
 });
 
 // POST /api/goals - Cria ou atualiza meta
-app.post('/api/goals', (req, res) => {
+app.post('/api/goals', async (req, res) => {
     try {
         const { user_id, target_weight, target_date, initial_weight, daily_goal, weekly_goal, monthly_goal } = req.body;
 
@@ -164,11 +164,11 @@ app.post('/api/goals', (req, res) => {
         }
 
         // Verifica se já existe meta para o usuário
-        const existing = queryOne('SELECT id FROM weight_goals WHERE user_id = ?', [user_id]);
+        const existing = await queryOne('SELECT id FROM weight_goals WHERE user_id = ?', [user_id]);
 
         if (existing) {
             // Atualiza
-            run(`
+            await run(`
                 UPDATE weight_goals SET 
                     target_weight = ?,
                     target_date = ?,
@@ -181,13 +181,13 @@ app.post('/api/goals', (req, res) => {
             `, [target_weight, target_date, initial_weight, daily_goal, weekly_goal, monthly_goal, user_id]);
         } else {
             // Cria
-            run(`
+            await run(`
                 INSERT INTO weight_goals (user_id, target_weight, target_date, initial_weight, daily_goal, weekly_goal, monthly_goal)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `, [user_id, target_weight, target_date, initial_weight, daily_goal, weekly_goal, monthly_goal]);
         }
 
-        const goal = queryOne('SELECT * FROM weight_goals WHERE user_id = ?', [user_id]);
+        const goal = await queryOne('SELECT * FROM weight_goals WHERE user_id = ?', [user_id]);
         res.json(goal);
     } catch (error) {
         console.error('Erro ao salvar goal:', error);
