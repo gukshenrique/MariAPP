@@ -1,40 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import base44 from '../api/base44Client';
 
 const AuthContext = createContext(null);
 
-const USERS_KEY = 'mariapp_users';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const CURRENT_USER_KEY = 'mariapp_current_user';
-
-// Get all registered users from localStorage with legacy support
-function getUsers() {
-    try {
-        const data = localStorage.getItem(USERS_KEY);
-        if (!data) return [];
-
-        const parsed = JSON.parse(data);
-
-        // Se já for array (formato novo), retorna
-        if (Array.isArray(parsed)) return parsed;
-
-        // Se for objeto (formato legado), migra para array
-        if (typeof parsed === 'object' && parsed !== null) {
-            console.warn('Migrating legacy user data to array format');
-            const usersArray = Object.values(parsed);
-            saveUsers(usersArray); // Salva já corrigido
-            return usersArray;
-        }
-
-        return [];
-    } catch (error) {
-        console.error('Error loading users:', error);
-        return [];
-    }
-}
-
-// Save users to localStorage
-function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
@@ -44,57 +14,84 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         const savedUser = localStorage.getItem(CURRENT_USER_KEY);
         if (savedUser) {
-            setCurrentUser(JSON.parse(savedUser));
+            const user = JSON.parse(savedUser);
+            setCurrentUser(user);
+            base44.setCurrentUser(user);
         }
         setIsLoading(false);
     }, []);
 
-    // Simplified Login: Just needs username
-    // If username exists -> Login
-    // If username new -> Register then Login
-    const login = (usernameInput) => {
-        if (!usernameInput || usernameInput.trim().length < 2) {
-            return { success: false, error: 'Digite um nome válido (mínimo 2 letras)' };
+    // Login: Verifica credenciais no backend
+    const login = async (username, password) => {
+        if (!username || username.trim().length < 2) {
+            return { success: false, error: 'Digite um nome válido' };
+        }
+        if (!password || password.length < 4) {
+            return { success: false, error: 'Digite uma senha válida' };
         }
 
-        const username = usernameInput.trim();
-        const users = getUsers();
+        try {
+            const response = await fetch(`${API_URL}/api/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username.trim(), password })
+            });
 
-        // Check if user already exists (case insensitive)
-        const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+            const data = await response.json();
 
-        let userToLogin;
+            if (!response.ok) {
+                return { success: false, error: data.error || 'Erro ao fazer login' };
+            }
 
-        if (existingUser) {
-            // User Exists - Load them
-            userToLogin = existingUser;
-        } else {
-            // User New - Create them
-            userToLogin = {
-                id: Date.now().toString(),
-                username: username,
-                name: username, // For now name = username
-                createdAt: new Date().toISOString()
-            };
+            const user = data.user;
+            setCurrentUser(user);
+            base44.setCurrentUser(user);
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 
-            const updatedUsers = [...users, userToLogin];
-            saveUsers(updatedUsers);
+            return { success: true, user };
+        } catch (error) {
+            console.error('Erro no login:', error);
+            return { success: false, error: 'Erro de conexão com o servidor' };
         }
-
-        // Set Session
-        setCurrentUser(userToLogin);
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userToLogin));
-
-        return { success: true, user: userToLogin, isNew: !existingUser };
     };
 
-    // Keep register for compatibility but it just redirects to login logic
-    const register = (username) => {
-        return login(username);
+    // Register: Cria novo usuário no backend
+    const register = async (username, password) => {
+        if (!username || username.trim().length < 2) {
+            return { success: false, error: 'Nome deve ter pelo menos 2 caracteres' };
+        }
+        if (!password || password.length < 4) {
+            return { success: false, error: 'Senha deve ter pelo menos 4 caracteres' };
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/users/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username.trim(), password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { success: false, error: data.error || 'Erro ao criar conta' };
+            }
+
+            const user = data.user;
+            setCurrentUser(user);
+            base44.setCurrentUser(user);
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+
+            return { success: true, user };
+        } catch (error) {
+            console.error('Erro no registro:', error);
+            return { success: false, error: 'Erro de conexão com o servidor' };
+        }
     };
 
     const logout = () => {
         setCurrentUser(null);
+        base44.setCurrentUser(null);
         localStorage.removeItem(CURRENT_USER_KEY);
     };
 

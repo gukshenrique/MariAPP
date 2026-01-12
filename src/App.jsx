@@ -27,7 +27,7 @@ function AppContent() {
         }
 
         if (currentUser) {
-            setCurrentUser(currentUser.username);
+            setCurrentUser(currentUser); // Passa o objeto completo com id, username, etc
             // Clear old queries and mark as synced
             queryClient.clear();
             setIsUserSynced(true);

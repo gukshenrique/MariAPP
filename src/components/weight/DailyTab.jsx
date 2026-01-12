@@ -68,9 +68,10 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
         }
 
         const target = goal.target_weight;
-        const weightToLose = currentWeight - target;
+        const weightDiff = Math.abs(currentWeight - target); // Diferença absoluta
+        const isGaining = target > currentWeight; // Se está ganhando peso
 
-        if (weightToLose <= 0) return null;
+        if (weightDiff <= 0) return null; // Já atingiu a meta
 
         const daysRemaining = differenceInDays(parseISO(goal.target_date), new Date());
         if (daysRemaining <= 0) return null;
@@ -79,11 +80,12 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
         const monthsRemaining = daysRemaining / 30;
 
         return {
-            total: weightToLose,
-            daily: goal.daily_goal || (weightToLose / daysRemaining) * 1000,
-            weekly: goal.weekly_goal || weightToLose / weeksRemaining,
-            monthly: goal.monthly_goal || weightToLose / monthsRemaining,
+            total: weightDiff,
+            daily: goal.daily_goal || (weightDiff / daysRemaining) * 1000, // em gramas
+            weekly: goal.weekly_goal || weightDiff / weeksRemaining,
+            monthly: goal.monthly_goal || weightDiff / monthsRemaining,
             daysRemaining,
+            isGaining, // Flag para saber se é ganho ou perda
         };
     })();
 
@@ -179,7 +181,9 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-white/50 rounded-xl p-3 text-center">
-                            <p className="text-[10px] text-gray-500 uppercase">Total a perder</p>
+                            <p className="text-[10px] text-gray-500 uppercase">
+                                {calculatedGoals.isGaining ? 'Total a ganhar' : 'Total a perder'}
+                            </p>
                             <p className="text-lg font-bold text-gray-900">
                                 {calculatedGoals.total.toFixed(1)} kg
                             </p>

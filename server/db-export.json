@@ -1,0 +1,43 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "Gustavo",
+      "password": "20ju22li",
+      "name": "Gustavo",
+      "created_at": "2026-01-12 12:43:32"
+    }
+  ],
+  "weight_entries": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "weight": 70,
+      "date": "2026-01-12",
+      "notes": null,
+      "created_at": "2026-01-12 12:46:18"
+    },
+    {
+      "id": 2,
+      "user_id": 1,
+      "weight": 72,
+      "date": "2026-01-01",
+      "notes": null,
+      "created_at": "2026-01-12 12:46:25"
+    }
+  ],
+  "weight_goals": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "target_weight": 80,
+      "target_date": "2026-02-12",
+      "initial_weight": null,
+      "daily_goal": null,
+      "weekly_goal": null,
+      "monthly_goal": null,
+      "created_at": "2026-01-12 12:46:06",
+      "updated_at": "2026-01-12 12:46:06"
+    }
+  ]
+}

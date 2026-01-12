@@ -1,113 +1,145 @@
-// Mock do cliente Base44 usando localStorage para persistência
-// Suporta múltiplos usuários com dados separados
+// API Client para MariAPP - Conecta ao backend SQLite
+// Substitui a versão antiga que usava localStorage
 
-let currentUsername = null;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Set the current user for data isolation
-export function setCurrentUser(username) {
-    currentUsername = username;
+let currentUser = null;
+
+// Set the current user for data operations
+export function setCurrentUser(user) {
+    currentUser = user;
 }
 
 // Get the current user
 export function getCurrentUser() {
-    return currentUsername;
+    return currentUser;
 }
 
-function getStorageKey(entityName) {
-    if (!currentUsername) {
-        // Fallback to global storage if no user logged in
-        return `mariapp_${entityName.toLowerCase()}`;
+// Helper para fazer requests
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_URL}${endpoint}`;
+
+    const response = await fetch(url, {
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        },
+        ...options
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(error.error || 'Erro na requisição');
     }
-    return `mariapp_user_${currentUsername}_${entityName.toLowerCase()}`;
+
+    return response.json();
 }
 
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
+// Entity para WeightEntry
+const WeightEntry = {
+    async list(orderBy = '', limit = 100) {
+        if (!currentUser) return [];
 
-function getStorageData(entityName) {
-    const key = getStorageKey(entityName);
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
-}
+        const entries = await apiRequest(`/api/entries/${currentUser.id}`);
 
-function setStorageData(entityName, data) {
-    const key = getStorageKey(entityName);
-    localStorage.setItem(key, JSON.stringify(data));
-}
+        // Handle ordering (server já retorna ordenado por date DESC, mas mantemos compatibilidade)
+        if (orderBy) {
+            const desc = orderBy.startsWith('-');
+            const field = desc ? orderBy.slice(1) : orderBy;
 
-function createEntity(entityName) {
-    return {
-        async list(orderBy = '', limit = 100) {
-            let data = getStorageData(entityName);
+            entries.sort((a, b) => {
+                const aVal = a[field];
+                const bVal = b[field];
+                if (aVal < bVal) return desc ? 1 : -1;
+                if (aVal > bVal) return desc ? -1 : 1;
+                return 0;
+            });
+        }
 
-            // Handle ordering
-            if (orderBy) {
-                const desc = orderBy.startsWith('-');
-                const field = desc ? orderBy.slice(1) : orderBy;
+        // Apply limit
+        if (limit && limit > 0) {
+            return entries.slice(0, limit);
+        }
 
-                data.sort((a, b) => {
-                    const aVal = a[field];
-                    const bVal = b[field];
+        return entries;
+    },
 
-                    if (aVal < bVal) return desc ? 1 : -1;
-                    if (aVal > bVal) return desc ? -1 : 1;
-                    return 0;
-                });
-            }
+    async create(item) {
+        if (!currentUser) throw new Error('Usuário não logado');
 
-            // Apply limit
-            if (limit && limit > 0) {
-                data = data.slice(0, limit);
-            }
+        return apiRequest('/api/entries', {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                weight: item.weight,
+                date: item.date,
+                notes: item.notes
+            })
+        });
+    },
 
-            return data;
-        },
+    async update(id, updates) {
+        // Para update, deletamos e recriamos (simplificação)
+        // Em produção, adicionaríamos uma rota PUT
+        await this.delete(id);
+        return this.create(updates);
+    },
 
-        async create(item) {
-            const data = getStorageData(entityName);
-            const newItem = {
-                ...item,
-                id: generateId(),
-                created_date: new Date().toISOString(),
-            };
-            data.push(newItem);
-            setStorageData(entityName, data);
-            return newItem;
-        },
+    async delete(id) {
+        return apiRequest(`/api/entries/${id}`, {
+            method: 'DELETE'
+        });
+    },
 
-        async update(id, updates) {
-            const data = getStorageData(entityName);
-            const index = data.findIndex(item => item.id === id);
+    async get(id) {
+        const entries = await this.list();
+        return entries.find(e => e.id === id) || null;
+    }
+};
 
-            if (index === -1) {
-                throw new Error(`Item with id ${id} not found`);
-            }
+// Entity para WeightGoal
+const WeightGoal = {
+    async list() {
+        if (!currentUser) return [];
 
-            data[index] = { ...data[index], ...updates };
-            setStorageData(entityName, data);
-            return data[index];
-        },
+        const goal = await apiRequest(`/api/goals/${currentUser.id}`);
+        return goal ? [goal] : [];
+    },
 
-        async delete(id) {
-            const data = getStorageData(entityName);
-            const filtered = data.filter(item => item.id !== id);
-            setStorageData(entityName, filtered);
-            return { success: true };
-        },
+    async create(item) {
+        if (!currentUser) throw new Error('Usuário não logado');
 
-        async get(id) {
-            const data = getStorageData(entityName);
-            return data.find(item => item.id === id) || null;
-        },
-    };
-}
+        return apiRequest('/api/goals', {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                ...item
+            })
+        });
+    },
+
+    async update(id, updates) {
+        return this.create(updates);
+    },
+
+    async delete(id) {
+        // Goals geralmente não são deletados, apenas atualizados
+        return { success: true };
+    },
+
+    async get(id) {
+        const goals = await this.list();
+        return goals[0] || null;
+    }
+};
 
 export const base44 = {
     entities: {
-        WeightEntry: createEntity('WeightEntry'),
-        WeightGoal: createEntity('WeightGoal'),
+        WeightEntry,
+        WeightGoal,
     },
+    setCurrentUser,
+    getCurrentUser
 };
 
 export default base44;
