@@ -5,13 +5,33 @@ const AuthContext = createContext(null);
 const USERS_KEY = 'mariapp_users';
 const CURRENT_USER_KEY = 'mariapp_current_user';
 
-// Get all registered users
+// Get all registered users from localStorage with legacy support
 function getUsers() {
-    const data = localStorage.getItem(USERS_KEY);
-    return data ? JSON.parse(data) : {};
+    try {
+        const data = localStorage.getItem(USERS_KEY);
+        if (!data) return [];
+
+        const parsed = JSON.parse(data);
+
+        // Se já for array (formato novo), retorna
+        if (Array.isArray(parsed)) return parsed;
+
+        // Se for objeto (formato legado), migra para array
+        if (typeof parsed === 'object' && parsed !== null) {
+            console.warn('Migrating legacy user data to array format');
+            const usersArray = Object.values(parsed);
+            saveUsers(usersArray); // Salva já corrigido
+            return usersArray;
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error loading users:', error);
+        return [];
+    }
 }
 
-// Save users
+// Save users to localStorage
 function saveUsers(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
@@ -20,7 +40,7 @@ export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Check for existing session on mount
+    // Initial load: check for active session
     useEffect(() => {
         const savedUser = localStorage.getItem(CURRENT_USER_KEY);
         if (savedUser) {
@@ -29,62 +49,50 @@ export function AuthProvider({ children }) {
         setIsLoading(false);
     }, []);
 
-    // Login function
-    const login = (username, password) => {
+    // Simplified Login: Just needs username
+    // If username exists -> Login
+    // If username new -> Register then Login
+    const login = (usernameInput) => {
+        if (!usernameInput || usernameInput.trim().length < 2) {
+            return { success: false, error: 'Digite um nome válido (mínimo 2 letras)' };
+        }
+
+        const username = usernameInput.trim();
         const users = getUsers();
-        const user = users[username.toLowerCase()];
 
-        if (!user) {
-            return { success: false, error: 'Usuário não encontrado' };
+        // Check if user already exists (case insensitive)
+        const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+
+        let userToLogin;
+
+        if (existingUser) {
+            // User Exists - Load them
+            userToLogin = existingUser;
+        } else {
+            // User New - Create them
+            userToLogin = {
+                id: Date.now().toString(),
+                username: username,
+                name: username, // For now name = username
+                createdAt: new Date().toISOString()
+            };
+
+            const updatedUsers = [...users, userToLogin];
+            saveUsers(updatedUsers);
         }
 
-        if (user.password !== password) {
-            return { success: false, error: 'Senha incorreta' };
-        }
+        // Set Session
+        setCurrentUser(userToLogin);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userToLogin));
 
-        const userData = { username: user.username, name: user.name };
-        setCurrentUser(userData);
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
-        return { success: true };
+        return { success: true, user: userToLogin, isNew: !existingUser };
     };
 
-    // Register function
-    const register = (username, name, password) => {
-        if (!username || !password) {
-            return { success: false, error: 'Preencha todos os campos' };
-        }
-
-        if (username.length < 3) {
-            return { success: false, error: 'Username deve ter pelo menos 3 caracteres' };
-        }
-
-        if (password.length < 4) {
-            return { success: false, error: 'Senha deve ter pelo menos 4 caracteres' };
-        }
-
-        const users = getUsers();
-        const key = username.toLowerCase();
-
-        if (users[key]) {
-            return { success: false, error: 'Usuário já existe' };
-        }
-
-        users[key] = {
-            username: key,
-            name: name || username,
-            password,
-            createdAt: new Date().toISOString()
-        };
-
-        saveUsers(users);
-
-        const userData = { username: key, name: name || username };
-        setCurrentUser(userData);
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
-        return { success: true };
+    // Keep register for compatibility but it just redirects to login logic
+    const register = (username) => {
+        return login(username);
     };
 
-    // Logout function
     const logout = () => {
         setCurrentUser(null);
         localStorage.removeItem(CURRENT_USER_KEY);
@@ -112,9 +120,4 @@ export function useAuth() {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-}
-
-// Helper to get user-specific storage key
-export function getUserStorageKey(baseKey, username) {
-    return `mariapp_user_${username}_${baseKey}`;
 }

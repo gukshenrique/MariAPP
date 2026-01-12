@@ -1,174 +1,107 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, LogIn, UserPlus, Heart } from 'lucide-react';
+import { Heart, User, ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
-    const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
-    const [name, setName] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const { login, isLoading } = useAuth();
 
-    const { login, register } = useAuth();
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleLogin = async (e) => {
+        if (e) e.preventDefault();
         setError('');
-        setIsLoading(true);
 
-        try {
-            let result;
-            if (isLogin) {
-                result = login(username, password);
-            } else {
-                result = register(username, name, password);
-            }
+        if (!username || username.trim().length < 2) {
+            setError('Por favor, digite um nome válido.');
+            return;
+        }
 
-            if (!result.success) {
-                setError(result.error);
-            }
-        } finally {
-            setIsLoading(false);
+        const result = login(username);
+        if (!result.success) {
+            setError(result.error);
         }
     };
 
-    const toggleMode = () => {
-        setIsLogin(!isLogin);
-        setError('');
-        setUsername('');
-        setName('');
-        setPassword('');
-    };
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-white flex flex-col items-center justify-center p-6">
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-8"
-            >
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-xl shadow-rose-200 mx-auto mb-4">
-                    <Heart className="w-10 h-10 text-white" />
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900">MariAPP</h1>
-                <p className="text-gray-500 mt-1">Seu progresso, sua jornada</p>
-            </motion.div>
-
+        <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-white flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="w-full max-w-sm"
+                className="w-full max-w-md"
             >
-                <div className="bg-white rounded-3xl p-6 shadow-xl shadow-rose-100/50 border border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
-                        {isLogin ? 'Entrar' : 'Criar Conta'}
-                    </h2>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Usuário
-                            </label>
-                            <div className="relative mt-2">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <Input
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="seu_usuario"
-                                    className="pl-10 rounded-xl border-gray-200 h-12"
-                                    required
-                                />
-                            </div>
+                <Card className="rounded-3xl shadow-xl shadow-rose-100/50 border-white/50 bg-white/80 backdrop-blur">
+                    <CardHeader className="text-center space-y-4 pb-8">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg shadow-rose-200 mx-auto transform rotate-3">
+                            <Heart className="w-8 h-8 text-white fill-current" />
                         </div>
-
-                        {!isLogin && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                            >
-                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="space-y-2">
+                            <CardTitle className="text-2xl font-bold text-gray-900">
+                                Olá! Quem é você?
+                            </CardTitle>
+                            <CardDescription className="text-base text-gray-500">
+                                Digite seu nome para acessar ou criar sua conta automaticamente.
+                            </CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="username" className="text-gray-700 font-medium ml-1">
                                     Seu Nome
-                                </label>
-                                <Input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Maria"
-                                    className="mt-2 rounded-xl border-gray-200 h-12"
-                                />
-                            </motion.div>
-                        )}
-
-                        <div>
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Senha
-                            </label>
-                            <div className="relative mt-2">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <Input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••"
-                                    className="pl-10 rounded-xl border-gray-200 h-12"
-                                    required
-                                />
+                                </Label>
+                                <div className="relative">
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <Input
+                                        id="username"
+                                        placeholder="Ex: Maria"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="h-14 pl-12 rounded-2xl border-gray-200 bg-gray-50/50 focus:bg-white text-lg transition-all focus:ring-2 focus:ring-rose-500/20"
+                                        autoComplete="username"
+                                        autoFocus
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {error && (
-                            <motion.p
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="text-sm text-rose-500 text-center bg-rose-50 rounded-xl p-3"
+                            {error && (
+                                <motion.p
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="text-sm text-rose-500 text-center font-medium bg-rose-50 p-2 rounded-lg border border-rose-100"
+                                >
+                                    {error}
+                                </motion.p>
+                            )}
+
+                            <Button
+                                type="submit"
+                                className="w-full h-14 text-lg font-semibold rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-200 transition-all active:scale-[0.98]"
+                                disabled={isLoading}
                             >
-                                {error}
-                            </motion.p>
-                        )}
+                                {isLoading ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Entrando...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        Acessar MariAPP
+                                        <ArrowRight className="w-5 h-5" />
+                                    </span>
+                                )}
+                            </Button>
+                        </form>
 
-                        <Button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full rounded-xl h-12 bg-gradient-to-r from-rose-400 to-pink-500 hover:from-rose-500 hover:to-pink-600 mt-2"
-                        >
-                            {isLogin ? (
-                                <>
-                                    <LogIn className="w-4 h-4 mr-2" />
-                                    Entrar
-                                </>
-                            ) : (
-                                <>
-                                    <UserPlus className="w-4 h-4 mr-2" />
-                                    Criar Conta
-                                </>
-                            )}
-                        </Button>
-                    </form>
-
-                    <div className="mt-6 text-center">
-                        <button
-                            onClick={toggleMode}
-                            className="text-sm text-gray-500 hover:text-rose-500 transition-colors"
-                        >
-                            {isLogin ? (
-                                <>Não tem conta? <span className="font-semibold text-rose-500">Criar agora</span></>
-                            ) : (
-                                <>Já tem conta? <span className="font-semibold text-rose-500">Entrar</span></>
-                            )}
-                        </button>
-                    </div>
-                </div>
-
-                <p className="text-xs text-gray-400 text-center mt-6">
-                    💾 Seus dados ficam salvos localmente no navegador
-                </p>
+                        <p className="text-xs text-center text-gray-400">
+                            🔒 Seus dados ficam salvos neste navegador e dispositivo.
+                        </p>
+                    </CardContent>
+                </Card>
             </motion.div>
         </div>
     );
