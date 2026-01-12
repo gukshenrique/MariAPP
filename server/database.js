@@ -1,46 +1,28 @@
-const initSqlJs = require('sql.js');
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@libsql/client');
 
-const DB_PATH = path.join(__dirname, 'mariapp.db');
+// Conecta ao Turso (SQLite na nuvem)
+const db = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-let db = null;
-
-// Função para salvar o banco em disco
-function saveDatabase() {
-    if (db) {
-        const data = db.export();
-        const buffer = Buffer.from(data);
-        fs.writeFileSync(DB_PATH, buffer);
-    }
-}
-
-// Inicializa o banco de dados
+// Inicializa o banco de dados (cria tabelas se não existirem)
 async function initDatabase() {
-    const SQL = await initSqlJs();
+    console.log('🔌 Conectando ao Turso...');
 
-    // Tenta carregar banco existente
-    if (fs.existsSync(DB_PATH)) {
-        const fileBuffer = fs.readFileSync(DB_PATH);
-        db = new SQL.Database(fileBuffer);
-        console.log('✅ Banco de dados carregado:', DB_PATH);
-    } else {
-        db = new SQL.Database();
-        console.log('✅ Novo banco de dados criado');
-    }
-
-    // Cria as tabelas se não existirem
-    db.run(`
+    // Cria tabela de usuários
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL COLLATE NOCASE,
             password TEXT NOT NULL,
             name TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
+        )
     `);
 
-    db.run(`
+    // Cria tabela de registros de peso
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS weight_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -49,10 +31,11 @@ async function initDatabase() {
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+        )
     `);
 
-    db.run(`
+    // Cria tabela de metas
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS weight_goals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE NOT NULL,
@@ -65,43 +48,34 @@ async function initDatabase() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+        )
     `);
 
-    // Salva o banco após criar tabelas
-    saveDatabase();
-
-    return db;
+    console.log('✅ Banco de dados Turso inicializado!');
 }
 
-// Helper para executar queries e retornar objetos
-function queryAll(sql, params = []) {
-    const stmt = db.prepare(sql);
-    stmt.bind(params);
-    const results = [];
-    while (stmt.step()) {
-        results.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return results;
+// Helper: Executa query e retorna todas as linhas
+async function queryAll(sql, params = []) {
+    const result = await db.execute({ sql, args: params });
+    return result.rows;
 }
 
-function queryOne(sql, params = []) {
-    const results = queryAll(sql, params);
-    return results[0] || null;
+// Helper: Executa query e retorna primeira linha
+async function queryOne(sql, params = []) {
+    const result = await db.execute({ sql, args: params });
+    return result.rows[0] || null;
 }
 
-function run(sql, params = []) {
-    db.run(sql, params);
-    saveDatabase();
-    return { lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0]?.values[0]?.[0] };
+// Helper: Executa INSERT/UPDATE/DELETE e retorna lastInsertRowid
+async function run(sql, params = []) {
+    const result = await db.execute({ sql, args: params });
+    return { lastInsertRowid: Number(result.lastInsertRowid) };
 }
 
 module.exports = {
+    db,
     initDatabase,
-    getDb: () => db,
     queryAll,
     queryOne,
-    run,
-    saveDatabase
+    run
 };
