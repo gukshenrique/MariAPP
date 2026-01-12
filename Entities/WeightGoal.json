@@ -1,0 +1,34 @@
+{
+    "name": "WeightGoal",
+    "type": "object",
+    "properties": {
+        "target_weight": {
+            "type": "number",
+            "description": "Peso alvo em kg"
+        },
+        "target_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Data limite para atingir a meta"
+        },
+        "daily_goal": {
+            "type": "number",
+            "description": "Meta di\u00e1ria de perda em gramas"
+        },
+        "weekly_goal": {
+            "type": "number",
+            "description": "Meta semanal de perda em kg"
+        },
+        "monthly_goal": {
+            "type": "number",
+            "description": "Meta mensal de perda em kg"
+        },
+        "initial_weight": {
+            "type": "number",
+            "description": "Peso inicial ao definir a meta"
+        }
+    },
+    "required": [
+        "target_weight"
+    ]
+}
