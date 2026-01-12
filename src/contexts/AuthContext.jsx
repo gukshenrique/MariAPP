@@ -3,7 +3,8 @@ import base44 from '../api/base44Client';
 
 const AuthContext = createContext(null);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Em produção, frontend e backend estão no mesmo servidor
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
 const CURRENT_USER_KEY = 'mariapp_current_user';
 
 export function AuthProvider({ children }) {

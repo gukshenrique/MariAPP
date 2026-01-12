@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { initDatabase, queryAll, queryOne, run } = require('./database');
 
 const app = express();
@@ -8,6 +9,10 @@ const PORT = process.env.PORT || 3001;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Serve arquivos estáticos do frontend (React build)
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
 
 // ============================================
 // ROTAS DE USUÁRIO
@@ -194,6 +199,13 @@ app.post('/api/goals', (req, res) => {
 // ============================================
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// SPA FALLBACK - Serve index.html para rotas do React
+// ============================================
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Inicia o servidor após inicializar o banco

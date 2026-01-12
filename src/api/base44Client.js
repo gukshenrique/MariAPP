@@ -1,7 +1,9 @@
 // API Client para MariAPP - Conecta ao backend SQLite
 // Substitui a versão antiga que usava localStorage
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Em produção (Render), frontend e backend estão no mesmo servidor, então API_URL fica vazio
+// Em desenvolvimento, usa localhost:3001
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
 
 let currentUser = null;
 
