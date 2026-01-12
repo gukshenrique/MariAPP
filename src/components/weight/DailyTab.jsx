@@ -20,6 +20,15 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
     const yesterdayEntry = sortedEntries.find(e => isYesterday(parseISO(e.date)));
 
     const currentWeight = todayEntry?.weight || sortedEntries[0]?.weight;
+
+    console.log('DailyTab Debug:', {
+        entriesCount: entries.length,
+        currentWeight,
+        goal,
+        todayEntry,
+        firstEntry: sortedEntries[0]
+    });
+
     const previousWeight = yesterdayEntry?.weight || sortedEntries[1]?.weight;
     const weightChange = currentWeight && previousWeight ? currentWeight - previousWeight : null;
 
@@ -163,7 +172,7 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
             </div>
 
             {/* Metas Calculadas - Second topic */}
-            {calculatedGoals && (
+            {calculatedGoals ? (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -202,6 +211,26 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
                     <p className="text-xs text-gray-500 mt-3 text-center">
                         Meta mensal: ~{calculatedGoals.monthly.toFixed(1)} kg
                     </p>
+                </motion.div>
+            ) : (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-50 rounded-2xl p-6 border border-gray-100 text-center space-y-3"
+                >
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                        <Target className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900">Defina sua Meta</h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {!currentWeight
+                                ? "Registre seu peso hoje para ver o cálculo das metas."
+                                : !goal?.target_weight
+                                    ? "Configure seu peso alvo na aba Config."
+                                    : "Configure uma data alvo na aba Config."}
+                        </p>
+                    </div>
                 </motion.div>
             )}
 
