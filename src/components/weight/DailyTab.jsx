@@ -21,14 +21,6 @@ export default function DailyTab({ entries, goal, onAddEntry, onDeleteEntry, isL
 
     const currentWeight = todayEntry?.weight || sortedEntries[0]?.weight;
 
-    console.log('DailyTab Debug:', {
-        entriesCount: entries.length,
-        currentWeight,
-        goal,
-        todayEntry,
-        firstEntry: sortedEntries[0]
-    });
-
     const previousWeight = yesterdayEntry?.weight || sortedEntries[1]?.weight;
     const weightChange = currentWeight && previousWeight ? currentWeight - previousWeight : null;
 
